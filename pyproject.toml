@@ -1,3 +1,7 @@
+[build-system]
+requires = ["scikit-build-core", "pybind11"]
+build-backend = "scikit_build_core.build"
+
 [project]
 name = "risksim"
 version = "0.1.0"
@@ -5,7 +9,6 @@ requires-python = ">=3.13"
 dependencies = [
     "matplotlib>=3.10.8",
     "mpl-qt-viz>=1.1.0",
-    "numba>=0.65.0",
     "pandas>=3.0.2",
     "pyqt6>=6.11.0",
     "seaborn>=0.13.2",
