@@ -3,8 +3,6 @@ import itertools
 import random
 import time
 from dataclasses import dataclass
-import matplotlib.pyplot as plt
-import numba
 import pandas as pd
 import seaborn as sns
 import logging
@@ -12,6 +10,7 @@ import numpy as np
 from PyQt6.QtWidgets import QApplication
 from mpl_qt_viz.visualizers import DockablePlotWindow
 from typing import NamedTuple
+import risk_solver_ext
 
 logger = logging.getLogger(__name__)
 
@@ -33,58 +32,58 @@ class AttackParams(NamedTuple):
     def_has_leader: bool
 
 
-def _solve_attack(atk_params: AttackParams):
-    attackers = atk_params.attackers
-    defenders = atk_params.defenders
-    while True:
-        if attackers >= 4:
-            rolls = _ROLLS_3
-            idx = np.random.randint(len(rolls))
-            att_roll = rolls[idx]
-        elif attackers == 3:
-            rolls = _ROLLS_2
-            idx = np.random.randint(len(rolls))
-            att_roll = rolls[idx]
-        else:
-            assert attackers == 2
-            rolls = _ROLLS_1
-            idx = np.random.randint(len(rolls))
-            att_roll = rolls[idx]
-        if atk_params.atk_has_leader:
-            att_roll = (att_roll[0] + 1,) + att_roll[1:]
-        if defenders >= 2:
-            rolls = _ROLLS_2
-            idx = np.random.randint(len(rolls))
-            def_roll = rolls[idx]
-        else:
-            assert defenders == 1
-            rolls = _ROLLS_1
-            idx = np.random.randint(len(rolls))
-            def_roll = rolls[idx]
-        if atk_params.def_has_leader:
-            def_roll = (def_roll[0] + 1,) + def_roll[1:]
-        # Process rolls
-        atk_lose = 0
-        def_lose = 0
-        for i in range(min(len(att_roll), len(def_roll))):
-            if att_roll[i] > def_roll[i]:
-                def_lose += 1
-            else:
-                atk_lose += 1
-        defenders -= def_lose
-        attackers -= atk_lose
-        if defenders <= 0 or attackers <= 1:
-            assert defenders >= 0
-            assert attackers >= 1
-            return AttackResult(
-                attackers,
-                defenders,
-                defenders == 0
-            )
+# def _solve_attack(atk_params: AttackParams):
+#     attackers = atk_params.attackers
+#     defenders = atk_params.defenders
+#     while True:
+#         if attackers >= 4:
+#             rolls = _ROLLS_3
+#             idx = np.random.randint(len(rolls))
+#             att_roll = rolls[idx]
+#         elif attackers == 3:
+#             rolls = _ROLLS_2
+#             idx = np.random.randint(len(rolls))
+#             att_roll = rolls[idx]
+#         else:
+#             assert attackers == 2
+#             rolls = _ROLLS_1
+#             idx = np.random.randint(len(rolls))
+#             att_roll = rolls[idx]
+#         if atk_params.atk_has_leader:
+#             att_roll = (att_roll[0] + 1,) + att_roll[1:]
+#         if defenders >= 2:
+#             rolls = _ROLLS_2
+#             idx = np.random.randint(len(rolls))
+#             def_roll = rolls[idx]
+#         else:
+#             assert defenders == 1
+#             rolls = _ROLLS_1
+#             idx = np.random.randint(len(rolls))
+#             def_roll = rolls[idx]
+#         if atk_params.def_has_leader:
+#             def_roll = (def_roll[0] + 1,) + def_roll[1:]
+#         # Process rolls
+#         atk_lose = 0
+#         def_lose = 0
+#         for i in range(min(len(att_roll), len(def_roll))):
+#             if att_roll[i] > def_roll[i]:
+#                 def_lose += 1
+#             else:
+#                 atk_lose += 1
+#         defenders -= def_lose
+#         attackers -= atk_lose
+#         if defenders <= 0 or attackers <= 1:
+#             assert defenders >= 0
+#             assert attackers >= 1
+#             return AttackResult(
+#                 attackers,
+#                 defenders,
+#                 defenders == 0
+#             )
 
-def solve_attack(atk_params: AttackParams):
-    _atk_params = copy.deepcopy(atk_params)
-    return _solve_attack(_atk_params)
+# def solve_attack(atk_params: AttackParams):
+#     _atk_params = copy.deepcopy(atk_params)
+#     return _solve_attack(_atk_params)
 
 @dataclass
 class ExperimentResult:
@@ -94,18 +93,21 @@ class ExperimentResult:
 
 def run_experiment(atk_params: AttackParams, num_trials: int, seed: int | None) -> ExperimentResult:
         random.seed(seed)
-        atk_win_with = []
-        def_win_with = []
-        def_lose = 0
-        atk_lose = 0
-        for trial in range(num_trials):
-            result = solve_attack(atk_params)
-            if result.attacker_wins:
-                atk_win_with.append(result.remaining_attacks)
-                def_lose += 1
-            else:
-                atk_lose += 1
-                def_win_with.append(result.remaining_defenders)
+        # atk_win_with = []
+        # def_win_with = []
+        # def_lose = 0
+        # atk_lose = 0
+        atk_win_with, def_win_with = risk_solver_ext.solve_n_attacks(num_trials, atk_params.attackers, atk_params.defenders, atk_params.atk_has_leader, atk_params.def_has_leader)
+        # for trial in range(num_trials):
+        #     attackers, defenders, atk_wins = risk_solver_ext.solve_attack(atk_params.attackers, atk_params.defenders, atk_params.atk_has_leader, atk_params.def_has_leader)
+        #     result = AttackResult(attackers, defenders, atk_wins)
+            # result = solve_attack(atk_params)
+            # if result.attacker_wins:
+            #     atk_win_with.append(result.remaining_attacks)
+            #     def_lose += 1
+            # else:
+            #     atk_lose += 1
+            #     def_win_with.append(result.remaining_defenders)
         return ExperimentResult(atk_win_with, def_win_with)
 
 
@@ -136,13 +138,21 @@ def plot_result(result: ExperimentResult) -> DockablePlotWindow:
 if __name__ == '__main__':
     import sys
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-    parms = AttackParams(100, False, 120, False)
-    print("beginning experiment")
-    stime = time.time()
-    result = run_experiment(parms, 10000, None)
-    print(f"experiment finished in {time.time() - stime} s")
+    # parms = AttackParams(50, False, 55, False)
     app = QApplication([])
-    plots = plot_result(result)
+    w = []
+    for parm in [
+        AttackParams(50,False, 60, False),
+        AttackParams(50, False, 60, True),
+        AttackParams(50, True, 60, True),
+        AttackParams(50, True, 60, False),
+    ]:
+        print("beginning experiment")
+        stime = time.time()
+        result = run_experiment(parm, 10000000, None)
+        print(f"experiment finished in {time.time() - stime} s")
+        plots = plot_result(result)
+        w.append(plots)
     app.exec()
     # plt.show(block=True)
     e = 1

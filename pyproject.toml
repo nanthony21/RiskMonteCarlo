@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core", "pybind11"]
+requires = ["scikit-build-core", "pybind11", "tbb"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -12,4 +12,6 @@ dependencies = [
     "pandas>=3.0.2",
     "pyqt6>=6.11.0",
     "seaborn>=0.13.2",
+    "tbb>=2022.3.1",
 ]
+
