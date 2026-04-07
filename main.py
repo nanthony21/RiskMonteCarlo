@@ -92,23 +92,9 @@ class ExperimentResult:
 
 
 def run_experiment(atk_params: AttackParams, num_trials: int, seed: int | None) -> ExperimentResult:
-        random.seed(seed)
-        # atk_win_with = []
-        # def_win_with = []
-        # def_lose = 0
-        # atk_lose = 0
-        atk_win_with, def_win_with = risk_solver_ext.solve_n_attacks(num_trials, atk_params.attackers, atk_params.defenders, atk_params.atk_has_leader, atk_params.def_has_leader)
-        # for trial in range(num_trials):
-        #     attackers, defenders, atk_wins = risk_solver_ext.solve_attack(atk_params.attackers, atk_params.defenders, atk_params.atk_has_leader, atk_params.def_has_leader)
-        #     result = AttackResult(attackers, defenders, atk_wins)
-            # result = solve_attack(atk_params)
-            # if result.attacker_wins:
-            #     atk_win_with.append(result.remaining_attacks)
-            #     def_lose += 1
-            # else:
-            #     atk_lose += 1
-            #     def_win_with.append(result.remaining_defenders)
-        return ExperimentResult(atk_win_with, def_win_with)
+    # random.seed(seed)
+    atk_win_with, def_win_with = risk_solver_ext.solve_n_attacks(num_trials, atk_params.attackers, atk_params.defenders, atk_params.atk_has_leader, atk_params.def_has_leader)
+    return ExperimentResult(atk_win_with, def_win_with)
 
 
 def plot_result(result: ExperimentResult) -> DockablePlotWindow:
@@ -142,14 +128,14 @@ if __name__ == '__main__':
     app = QApplication([])
     w = []
     for parm in [
-        AttackParams(50,False, 60, False),
-        AttackParams(50, False, 60, True),
-        AttackParams(50, True, 60, True),
-        AttackParams(50, True, 60, False),
+        AttackParams(30, False, 1, False),
+        AttackParams(30, True, 1, True),
+        # AttackParams(50, True, 60, True),
+        # AttackParams(50, True, 60, False),
     ]:
         print("beginning experiment")
         stime = time.time()
-        result = run_experiment(parm, 10000000, None)
+        result = run_experiment(parm, 100000, None)
         print(f"experiment finished in {time.time() - stime} s")
         plots = plot_result(result)
         w.append(plots)

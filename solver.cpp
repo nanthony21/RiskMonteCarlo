@@ -38,7 +38,12 @@ static auto ROLLS_1 = initialize_possible_rolls<1>();
 static auto ROLLS_2 = initialize_possible_rolls<2>();
 static auto ROLLS_3 = initialize_possible_rolls<3>();
 
-thread_local std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
+// thread_local std::default_random_engine gen(std::chrono::system_clock::now().time_since_epoch().count());
+
+std::default_random_engine& get_thread_local_engine() {
+    thread_local std::default_random_engine gen(std::random_device {}());
+    return gen;
+}
 
 auto reserve_all = [](size_t N, auto&... vecs) {
     (vecs.reserve(N), ...); // fold expression (C++17)
@@ -58,8 +63,14 @@ std::tuple<std::vector<int>, std::vector<int>> solve_n_attacks(size_t N, int att
 
         for (auto it = rng.begin(); it!=rng.end(); ++it) {
             auto [a,b,c] = solve_attack(attackers, defenders, atk_has_leader, def_has_leader);
-             attackers_remain.emplace_back(a);
-             defenders_remain.emplace_back(b);
+            if (a > 1) {
+                attackers_remain.emplace_back(a);
+
+            }
+            else {
+                defenders_remain.emplace_back(b);
+
+            }
         }
         {
             std::scoped_lock lock(mut);
@@ -87,31 +98,31 @@ std::tuple<std::vector<int>, std::vector<int>> solve_n_attacks(size_t N, int att
         std::variant<std::array<uint8_t, 1>, std::array<uint8_t, 2>, std::array<uint8_t, 3>> att_roll;
         if (attackers >= 4) {
             auto rolls = ROLLS_3;
-            const size_t idx = std::uniform_int_distribution<size_t>(0z, rolls.size() - 1)(gen);
+            const size_t idx = std::uniform_int_distribution<size_t>(0z, rolls.size() - 1)(get_thread_local_engine());
             att_roll = rolls[idx];
         }
         else if (attackers == 3) {
             auto rolls = ROLLS_2;
-            const size_t idx = std::uniform_int_distribution<size_t>(0z, rolls.size() - 1)(gen);
+            const size_t idx = std::uniform_int_distribution<size_t>(0z, rolls.size() - 1)(get_thread_local_engine());
             att_roll = rolls[idx];
         }
         else {
             assert(attackers == 2);
             auto rolls = ROLLS_1;
-            const size_t idx = std::uniform_int_distribution<size_t>(0z, rolls.size() - 1)(gen);
+            const size_t idx = std::uniform_int_distribution<size_t>(0z, rolls.size() - 1)(get_thread_local_engine());
             att_roll = rolls[idx];
         }
 
         std::variant<std::array<uint8_t, 1>, std::array<uint8_t, 2>> def_roll;
         if (defenders >= 2) {
             auto rolls = ROLLS_2;
-            const size_t idx = std::uniform_int_distribution<size_t>(0z, rolls.size() - 1)(gen);
+            const size_t idx = std::uniform_int_distribution<size_t>(0z, rolls.size() - 1)(get_thread_local_engine());
             def_roll = rolls[idx];
         }
         else {
             assert(defenders == 1);
             auto rolls = ROLLS_1;
-            const size_t idx = std::uniform_int_distribution<size_t>(0z, rolls.size() - 1)(gen);
+            const size_t idx = std::uniform_int_distribution<size_t>(0z, rolls.size() - 1)(get_thread_local_engine());
             def_roll = rolls[idx];
         }
 
