@@ -87,38 +87,45 @@ class AttackParams(NamedTuple):
 
 @dataclass
 class ExperimentResult:
-    atk_wins: list[int]
-    def_wins: list[int]
+    atk_hist: list[int]
+    def_hist: list[int]
 
 
 def run_experiment(atk_params: AttackParams, num_trials: int, seed: int | None) -> ExperimentResult:
     # random.seed(seed)
-    atk_win_with, def_win_with = risk_solver_ext.solve_n_attacks(num_trials, atk_params.attackers, atk_params.defenders, atk_params.atk_has_leader, atk_params.def_has_leader)
-    return ExperimentResult(atk_win_with, def_win_with)
+    atk_win_hist, def_win_hist = risk_solver_ext.solve_n_attacks(num_trials, atk_params.attackers, atk_params.defenders, atk_params.atk_has_leader, atk_params.def_has_leader)
+    return ExperimentResult(atk_win_hist, def_win_hist)
 
 
-def plot_result(result: ExperimentResult) -> DockablePlotWindow:
-    df = (pd.concat([pd.Series(result.def_wins), pd.Series(result.atk_wins)], keys=("def", "atk"), names=['side'])
-           .reset_index(level='side')
+def plot_result(result: ExperimentResult, params: AttackParams) -> DockablePlotWindow:
+
+    df = (pd.concat([pd.DataFrame(pd.Series(result.def_hist)), pd.DataFrame(pd.Series(result.atk_hist))], keys=("def", "atk"), names=['side'])
+           .reset_index()
            .reset_index(drop=True)
-          .rename({0: 'remaining'}, axis=1))
-    plots = DockablePlotWindow()
+          .rename({0: 'count', 'level_1': 'remain'}, axis=1))
+    df[['count', 'remain']] = df[['count', 'remain']].astype(float)
+    df['percent'] = df['count'] / df['count'].sum() * 100
+    plots = DockablePlotWindow(str(params))
     fig, ax = plots.subplots("combined", 'left')
-    sns.histplot(data=df, x='remaining', hue='side', discrete=True, stat='percent')
-    fig, ax = plots.subplots("box", "left")
-    sns.boxplot(data=df, x='side', y='remaining')
+    sns.barplot(data=df, y='percent', hue='side',x='remain', width=1, ax=ax, native_scale=True)
+    # fig, ax = plots.subplots("box", "left")
+    # sns.boxplot(data=df, x='side', y='percent')
     for side, g in df.groupby("side"):
         fig, ax = plots.subplots(side, "right")
-        sns.histplot(data=g, x='remaining', discrete=True, stat='percent')
-        fig.suptitle(f"{side} : {len(g) / len(df) * 100: .2f}% to win")
+        sns.barplot(data=g, y='percent',x='remain', width=1, ax=ax, native_scale=True)
+        fig.suptitle(f"{side} : {g['percent'].sum() / df['percent'].sum() * 100: .2f}% to win")
 
-    df = pd.concat([pd.Series(result.atk_wins), pd.Series(-1 * np.array(result.def_wins))], axis=0)
-    df.rename("Remaining Atk", inplace=True)
+    # df = pd.concat([pd.Series(result.atk_hist), pd.Series(-1 * np.array(result.def_wins))], axis=0)
+    # isdef = df['side'] == 'def'
+    df['remain'] = df.apply(lambda row: -row['remain'] if row['side'] == 'def' else row['remain'], axis=1)
+    df = df.sort_values('remain')
     df = pd.DataFrame(df)
     fig, ax = plots.subplots("stacked hist")
-    sns.histplot(data=df, x="Remaining Atk", discrete=True, stat='percent')
-    fig, ax = plots.subplots("stacked box")
-    sns.boxplot(data=df, y="Remaining Atk")
+    sns.barplot(data=df, y="percent", x='remain',  hue='side', width=2, ax=ax, native_scale=True)
+    cum = np.cumsum(df['count'])
+    cum /= cum.max()
+    thresh = [df['remain'].iloc[np.argmin((cum - p).abs())] for p in [.25, .5, .75]]
+    ax.vlines(x=thresh, ymin=0, ymax=df['percent'].max(), color=['k', 'k', 'k'], linestyles=['--', '-', '--'])
     return plots
 
 if __name__ == '__main__':
@@ -128,8 +135,8 @@ if __name__ == '__main__':
     app = QApplication([])
     w = []
     for parm in [
-        AttackParams(30, False, 1, False),
-        AttackParams(30, True, 1, True),
+        AttackParams(15, False, 21, False),
+        # AttackParams(30, True, 40, False),
         # AttackParams(50, True, 60, True),
         # AttackParams(50, True, 60, False),
     ]:
@@ -137,7 +144,7 @@ if __name__ == '__main__':
         stime = time.time()
         result = run_experiment(parm, 100000, None)
         print(f"experiment finished in {time.time() - stime} s")
-        plots = plot_result(result)
+        plots = plot_result(result, parm)
         w.append(plots)
     app.exec()
     # plt.show(block=True)

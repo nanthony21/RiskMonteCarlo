@@ -49,48 +49,74 @@ auto reserve_all = [](size_t N, auto&... vecs) {
     (vecs.reserve(N), ...); // fold expression (C++17)
 };
 
-std::tuple<std::vector<int>, std::vector<int>> solve_n_attacks(size_t N, int attackers, int defenders, bool atk_has_leader, bool def_has_leader) {
-    std::vector<int> attackers_remain_g;
-    std::vector<int> defenders_remain_g;
+template<typename T, typename return_t>
+struct Solver {
+    // using return_t = typename T::ret_t;
 
-    reserve_all(N, attackers_remain_g, defenders_remain_g);
-    std::mutex mut;
+    return_t aggregate() = delete;
 
-    tbb::parallel_for(tbb::blocked_range<size_t>(0, N, N / 16), [&attackers_remain_g, &defenders_remain_g, &mut, &attackers, &defenders, atk_has_leader, def_has_leader](tbb::blocked_range<size_t> const& rng) {
-        std::vector<int> attackers_remain;
-        std::vector<int> defenders_remain;
-        reserve_all(rng.size(), attackers_remain, defenders_remain);
+    void append(int a, int d) = delete;
 
-        for (auto it = rng.begin(); it!=rng.end(); ++it) {
-            auto [a,b,c] = solve_attack(attackers, defenders, atk_has_leader, def_has_leader);
-            if (a > 1) {
-                attackers_remain.emplace_back(a);
+    std::tuple<return_t, return_t> solve_n_base(size_t N, int attackers, int defenders, bool atk_has_leader, bool def_has_leader) {
+        std::mutex mut;
 
+        tbb::parallel_for(tbb::blocked_range<size_t>(0, N, N / 16), [this, &mut, &attackers, &defenders, atk_has_leader, def_has_leader](tbb::blocked_range<size_t> const& rng) {
+            for (auto it = rng.begin(); it!=rng.end(); ++it) {
+                auto [a,b,c] = solve_attack(attackers, defenders, atk_has_leader, def_has_leader);
+                static_cast<T*>(this)->append(a, b);
             }
-            else {
-                defenders_remain.emplace_back(b);
+        });
 
-            }
-        }
         {
-            std::scoped_lock lock(mut);
-            attackers_remain_g.insert(attackers_remain_g.end(), attackers_remain.begin(), attackers_remain.end());
-            defenders_remain_g.insert(defenders_remain_g.end(), defenders_remain.begin(), defenders_remain.end());
+            return static_cast<T*>(this)->aggregate();
         }
-    });
-    // auto myTask = [] {
-    //     auto [a,b,c] = solve_attack(attackers, defenders, atk_has_leader, def_has_leader);
-    //     attackers_remain.emplace_back(a);
-    //     defenders_remain.emplace_back(b);
-    // };
-    // auto handle = std::async(std::launch::async, myTask, 42);
-    // handle.wait();
-    // for (size_t i=0; i<N; i++) {
-    //     auto [a,b,c] = solve_attack(attackers, defenders, atk_has_leader, def_has_leader);
-    //     attackers_remain.emplace_back(a);
-    //     defenders_remain.emplace_back(b);
-    // }
-    return {attackers_remain_g, defenders_remain_g};
+    }
+};
+
+// auto empty_hist = [](int count){std::vector<std::atomic<size_t>> v(count, 0); return v;};
+
+struct HistogramSolver: Solver<HistogramSolver, std::vector<size_t>> {
+
+    using hist_t = std::vector<size_t>;
+    // using ret_t = typename hist_t;
+
+    HistogramSolver(int attacker_count, int defender_count):
+        atk_count(attacker_count+1),
+        def_count(defender_count+1) {
+        std::ranges::fill(atk_count, 0);
+        std::ranges::fill(def_count, 0);
+    }
+
+    std::tuple<hist_t, hist_t> aggregate() {
+        hist_t out_a;
+        hist_t out_d;
+        out_a.reserve(atk_count.size());
+        out_d.reserve(def_count.size());
+        for (auto const& cnt : atk_count) {
+            out_a.push_back(cnt);
+        }
+        for (auto const& cnt : def_count) {
+            out_d.push_back(cnt);
+        }
+        return {out_a, out_d};
+    }
+
+    void append(int a, int d) {
+        if (a > 1) {
+            atk_count[a]++;
+        }
+        else
+            def_count[d]++;
+    }
+    std::vector<std::atomic<size_t>> atk_count;
+    std::vector<std::atomic<size_t>> def_count;
+};
+
+
+
+std::tuple<std::vector<size_t>, std::vector<size_t>> solve_n_attacks(size_t N, int attackers, int defenders, bool atk_has_leader, bool def_has_leader) {
+    auto [att, def] = HistogramSolver(attackers, defenders).solve_n_base(N, attackers, defenders, atk_has_leader, def_has_leader);
+    return std::tuple {att, def};
 }
 
  std::tuple<int, int, bool> solve_attack(int attackers, int defenders, bool atk_has_leader, bool def_has_leader) {
