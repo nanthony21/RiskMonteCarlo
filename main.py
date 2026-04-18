@@ -107,12 +107,12 @@ def plot_result(result: ExperimentResult, params: AttackParams) -> DockablePlotW
     df['percent'] = df['count'] / df['count'].sum() * 100
     plots = DockablePlotWindow(str(params))
     fig, ax = plots.subplots("combined", 'left')
-    sns.barplot(data=df, y='percent', hue='side',x='remain', width=1, ax=ax, native_scale=True)
+    sns.histplot(data=df, weights='percent', hue='side',x='remain', ax=ax, binwidth=1, stat='percent')
     # fig, ax = plots.subplots("box", "left")
     # sns.boxplot(data=df, x='side', y='percent')
     for side, g in df.groupby("side"):
         fig, ax = plots.subplots(side, "right")
-        sns.barplot(data=g, y='percent',x='remain', width=1, ax=ax, native_scale=True)
+        sns.histplot(data=g, weights='percent',x='remain', ax=ax, binwidth=1, stat='percent')
         fig.suptitle(f"{side} : {g['percent'].sum() / df['percent'].sum() * 100: .2f}% to win")
 
     # df = pd.concat([pd.Series(result.atk_hist), pd.Series(-1 * np.array(result.def_wins))], axis=0)
@@ -121,7 +121,7 @@ def plot_result(result: ExperimentResult, params: AttackParams) -> DockablePlotW
     df = df.sort_values('remain')
     df = pd.DataFrame(df)
     fig, ax = plots.subplots("stacked hist")
-    sns.barplot(data=df, y="percent", x='remain',  hue='side', width=2, ax=ax, native_scale=True)
+    sns.histplot(data=df, weights="percent", x='remain',  hue='side', binwidth=1, ax=ax, stat='percent')
     cum = np.cumsum(df['count'])
     cum /= cum.max()
     thresh = [df['remain'].iloc[np.argmin((cum - p).abs())] for p in [.25, .5, .75]]
