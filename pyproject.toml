@@ -5,6 +5,10 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "risksim"
 version = "0.1.0"
+authors = [{name = "Nick Anthony", email = "nickmanthony@hotmail.com"}]
+description = 'This simple program provides histogram plotting of the likelihood of possible outcomes in a game of Risk battle.'
+license = "MIT AND (Apache-2.0 OR BSD-2-Clause)"
+readme = 'README.md'
 requires-python = ">=3.13"
 dependencies = [
     "matplotlib>=3.10.8",
@@ -14,4 +18,12 @@ dependencies = [
     "seaborn>=0.13.2",
     "tbb>=2022.3.1",
 ]
+[project.urls]
+homepage = "https://github.com/nanthony21/RiskMonteCarlo"
+[project.scripts]
+risk-sim = 'risk_sim.__main__:cli_main'
+
+[tool.scikit-build]
+# List the directories containing your __init__.py files
+wheel.packages = ["src/risk_sim"]
 
