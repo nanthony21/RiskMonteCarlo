@@ -1,7 +1,4 @@
 import argparse
-import copy
-import itertools
-import random
 import time
 from dataclasses import dataclass
 import pandas as pd
@@ -26,6 +23,7 @@ class AttackParams(NamedTuple):
     atk_has_leader: bool
     defenders: int
     def_has_leader: bool
+    def_is_capitol: bool = False
 
 
 @dataclass
@@ -35,7 +33,7 @@ class ExperimentResult:
 
 
 def run_experiment(atk_params: AttackParams, num_trials: int) -> ExperimentResult:
-    atk_win_hist, def_win_hist = risk_solver.solve_n_attacks(num_trials, atk_params.attackers, atk_params.defenders, atk_params.atk_has_leader, atk_params.def_has_leader)
+    atk_win_hist, def_win_hist = risk_solver.solve_n_attacks(num_trials, atk_params.attackers, atk_params.defenders, atk_params.atk_has_leader, atk_params.def_has_leader, atk_params.def_is_capitol)
     return ExperimentResult(atk_win_hist, def_win_hist)
 
 
@@ -73,10 +71,11 @@ def cli_main():
     parser.add_argument('-n', '--num-trials', dest='num_trials', type=int, default=100000)
     parser.add_argument('-a', '--atk-has-leader', dest='atk_has_leader', action='store_true')
     parser.add_argument('-d', '--def-has-leader', dest='def_has_leader', action='store_true')
+    parser.add_argument('-c', '--capitol', action='store_true', dest='def_is_capitol')
 
     args = parser.parse_args()
     
-    param = AttackParams(args.num_attackers, args.atk_has_leader, args.num_defenders, args.def_has_leader)
+    param = AttackParams(args.num_attackers, args.atk_has_leader, args.num_defenders, args.def_has_leader, args.def_is_capitol)
     stime = time.time()
     result = run_experiment(param, args.num_trials)
     print(f"experiment finished in {time.time() - stime} seconds")

@@ -3,7 +3,7 @@ requires = ["scikit-build-core", "pybind11", "tbb"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "risksim"
+name = "risk-simulator"
 version = "0.1.0"
 authors = [{name = "Nick Anthony", email = "nickmanthony@hotmail.com"}]
 description = 'This simple program provides histogram plotting of the likelihood of possible outcomes in a game of Risk battle.'

@@ -75,10 +75,10 @@ concept SolverC = requires(T a) {
 template<typename Derived, typename return_t>
 struct Solver {
 
-    std::tuple<return_t, return_t> solve_n(size_t N, int attackers, int defenders, bool atk_has_leader, bool def_has_leader) {
-        tbb::parallel_for(tbb::blocked_range<size_t>(0, N, N / 16), [this, &attackers, &defenders, atk_has_leader, def_has_leader](tbb::blocked_range<size_t> const& rng) {
+    std::tuple<return_t, return_t> solve_n(size_t N, int attackers, int defenders, bool atk_has_leader, bool def_has_leader, bool def_is_capitol) {
+        tbb::parallel_for(tbb::blocked_range<size_t>(0, N, N / 16), [this, attackers, defenders, atk_has_leader, def_has_leader, def_is_capitol](tbb::blocked_range<size_t> const& rng) {
             for (auto it = rng.begin(); it!=rng.end(); ++it) {
-                auto [a,b,c] = solve_attack(attackers, defenders, atk_has_leader, def_has_leader);
+                auto [a,b] = solve_attack(attackers, defenders, atk_has_leader, def_has_leader, def_is_capitol);
                 static_cast<Derived*>(this)->collect(a, b);
             }
         });
@@ -127,18 +127,25 @@ struct HistogramSolver: Solver<HistogramSolver, std::vector<size_t>> {
 static_assert(SolverC<HistogramSolver, HistogramSolver::hist_t>);
 
 
-std::tuple<std::vector<size_t>, std::vector<size_t>> solve_n_attacks(size_t N, int attackers, int defenders, bool atk_has_leader, bool def_has_leader) {
-    auto [att, def] = HistogramSolver(attackers, defenders).solve_n(N, attackers, defenders, atk_has_leader, def_has_leader);
+std::tuple<std::vector<size_t>, std::vector<size_t>> solve_n_attacks(size_t N, int attackers, int defenders, bool atk_has_leader, bool def_has_leader, bool def_is_capitol) {
+    auto [att, def] = HistogramSolver(attackers, defenders).solve_n(N, attackers, defenders, atk_has_leader, def_has_leader, def_is_capitol);
     return std::tuple {att, def};
 }
 
- std::tuple<int, int, bool> solve_attack(int attackers, int defenders, bool atk_has_leader, bool def_has_leader) {
+ std::tuple<int, int> solve_attack(int attackers, int defenders, bool atk_has_leader, bool def_has_leader, bool def_is_capitol) {
     while (true) {
         std::variant<std::array<uint8_t, 1>, std::array<uint8_t, 2>, std::array<uint8_t, 3>> att_roll;
         if (attackers >= 4) {
-            auto rolls = ROLLS_3;
-            const size_t idx = std::uniform_int_distribution<size_t>(0z, rolls.size() - 1)(get_thread_local_engine());
-            att_roll = rolls[idx];
+            if (def_is_capitol) { // capitol can only be attacked with 2 dice
+                auto rolls = ROLLS_2;
+                const size_t idx = std::uniform_int_distribution<size_t>(0z, rolls.size() - 1)(get_thread_local_engine());
+                att_roll = rolls[idx];
+            }
+            else { // default behavior allows attacking with 3 dice
+                auto rolls = ROLLS_3;
+                const size_t idx = std::uniform_int_distribution<size_t>(0z, rolls.size() - 1)(get_thread_local_engine());
+                att_roll = rolls[idx];
+            }
         }
         else if (attackers == 3) {
             auto rolls = ROLLS_2;
@@ -192,8 +199,7 @@ std::tuple<std::vector<size_t>, std::vector<size_t>> solve_n_attacks(size_t N, i
             assert(attackers >= 1);
             return {
                 attackers,
-                defenders,
-                defenders == 0
+                defenders
             };
         }
     }

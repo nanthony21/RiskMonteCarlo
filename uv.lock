@@ -523,7 +523,7 @@ wheels = [
 ]
 
 [[package]]
-name = "risksim"
+name = "risk-simulator"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
