@@ -10,7 +10,7 @@ import numpy as np
 from PyQt6.QtWidgets import QApplication
 from mpl_qt_viz.visualizers import DockablePlotWindow
 from typing import NamedTuple
-import risk_solver_ext
+import risk_solver
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ class ExperimentResult:
 
 def run_experiment(atk_params: AttackParams, num_trials: int, seed: int | None) -> ExperimentResult:
     # random.seed(seed)
-    atk_win_hist, def_win_hist = risk_solver_ext.solve_n_attacks(num_trials, atk_params.attackers, atk_params.defenders, atk_params.atk_has_leader, atk_params.def_has_leader)
+    atk_win_hist, def_win_hist = risk_solver.solve_n_attacks(num_trials, atk_params.attackers, atk_params.defenders, atk_params.atk_has_leader, atk_params.def_has_leader)
     return ExperimentResult(atk_win_hist, def_win_hist)
 
 

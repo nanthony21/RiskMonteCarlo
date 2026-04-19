@@ -4,17 +4,19 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 add_subdirectory(extern/pybind11)
-#find_package(pybind11 CONFIG REQUIRED)
 find_package(TBB CONFIG REQUIRED)
 
-add_library(tester solver.cpp
+add_library(rslib solver.cpp
         solver.hpp)
-target_link_libraries(tester TBB::tbb)
+target_link_libraries(rslib TBB::tbb)
 
-add_executable(test main.cpp)
-target_link_libraries(test PUBLIC tester)
+option(RiskSim_BUILD_TESTS OFF "Build tests")
+if (RiskSim_BUILD_TESTS)
+    add_executable(test tests/main.cpp)
+    target_link_libraries(test PRIVATE rslib)
+endif()
 
 # The target name must match the name used in your C++ PYBIND11_MODULE macro
-pybind11_add_module(risk_solver_ext module.cpp)
-target_link_libraries(risk_solver_ext PUBLIC tester)
-install(TARGETS risk_solver_ext DESTINATION .)
+pybind11_add_module(risk_solver module.cpp)
+target_link_libraries(risk_solver PRIVATE rslib)
+install(TARGETS risk_solver DESTINATION .)
