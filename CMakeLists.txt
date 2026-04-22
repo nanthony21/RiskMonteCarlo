@@ -4,7 +4,6 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 add_subdirectory(extern/pybind11)
-find_package(TBB CONFIG REQUIRED)
 
 add_library(
     rslib
@@ -12,7 +11,12 @@ add_library(
     cpp_src/solver.hpp
     )
 
-target_link_libraries(rslib TBB::tbb)
+find_package(TBB CONFIG)
+if (TBB_Found)
+    target_link_libraries(rslib TBB::tbb)
+else ()
+    target_compile_definitions(rslib PRIVATE "RISK_SINGLE_THREAD")
+endif ()
 
 option(RiskSim_BUILD_TESTS OFF "Build tests")
 if (RiskSim_BUILD_TESTS)

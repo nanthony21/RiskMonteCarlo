@@ -5,9 +5,13 @@
 #include <algorithm>
 #include <cassert>
 #include "solver.hpp"
-#include <tbb/tbb.h>
 #include <chrono>
 #include <future>
+#include <variant>
+
+#ifndef RISK_SINGLE_THREAD
+#include <tbb/tbb.h>
+#endif
 
 /**
  *
@@ -76,12 +80,21 @@ template<typename Derived, typename return_t>
 struct Solver {
 
     std::tuple<return_t, return_t> solve_n(size_t N, int attackers, int defenders, bool atk_has_leader, bool def_has_leader, bool def_is_capitol) {
-        tbb::parallel_for(tbb::blocked_range<size_t>(0, N, N / 16), [this, attackers, defenders, atk_has_leader, def_has_leader, def_is_capitol](tbb::blocked_range<size_t> const& rng) {
+        auto iter = [this](int attackers, int defenders, bool atk_has_leader, bool def_has_leader, bool def_is_capitol) {
+            auto [a,b] = solve_attack(attackers, defenders, atk_has_leader, def_has_leader, def_is_capitol);
+            static_cast<Derived*>(this)->collect(a, b);;
+        };
+#ifdef RISK_SINGLE_THREAD
+        for (size_t i=0; i<N; ++i) {
+            iter(attackers, defenders, atk_has_leader, def_has_leader, def_is_capitol);
+        }
+#else
+        tbb::parallel_for(tbb::blocked_range<size_t>(0, N, N / 16), [iter, attackers, defenders, atk_has_leader, def_has_leader, def_is_capitol](tbb::blocked_range<size_t> const& rng) {
             for (auto it = rng.begin(); it!=rng.end(); ++it) {
-                auto [a,b] = solve_attack(attackers, defenders, atk_has_leader, def_has_leader, def_is_capitol);
-                static_cast<Derived*>(this)->collect(a, b);
+                iter(attackers, defenders, atk_has_leader, def_has_leader, def_is_capitol);
             }
         });
+#endif
         return static_cast<Derived*>(this)->aggregate();
     }
 };
@@ -124,7 +137,7 @@ struct HistogramSolver: Solver<HistogramSolver, std::vector<size_t>> {
     std::vector<std::atomic<size_t>> def_count;
 };
 
-static_assert(SolverC<HistogramSolver, HistogramSolver::hist_t>);
+static_assert(SolverC<HistogramSolver, typename HistogramSolver::hist_t>);
 
 
 std::tuple<std::vector<size_t>, std::vector<size_t>> solve_n_attacks(size_t N, int attackers, int defenders, bool atk_has_leader, bool def_has_leader, bool def_is_capitol) {
@@ -204,5 +217,3 @@ std::tuple<std::vector<size_t>, std::vector<size_t>> solve_n_attacks(size_t N, i
         }
     }
 }
-
-
