@@ -45,18 +45,21 @@ def plot_result(result: ExperimentResult, params: AttackParams) -> DockablePlotW
     df[['count', 'remain']] = df[['count', 'remain']].astype(float)
     df['percent'] = df['count'] / df['count'].sum() * 100
     plots = DockablePlotWindow(str(params))
-    fig, ax = plots.subplots("combined", 'left')
-    sns.histplot(data=df, weights='percent', hue='side',x='remain', ax=ax, binwidth=1, stat='percent')
+
+    pct_chance = {}
     for side, g in df.groupby("side"):
-        fig, ax = plots.subplots(side, "right")
+        pct_chance[side] = g['percent'].sum() / df['percent'].sum() * 100
+
+    for dock_area, (side, g) in zip(['right', 'left'], df.groupby("side")):
+        fig, ax = plots.subplots(side, dock_area)
         sns.histplot(data=g, weights='percent',x='remain', ax=ax, binwidth=1, stat='percent')
-        fig.suptitle(f"{side} : {g['percent'].sum() / df['percent'].sum() * 100: .2f}% to win")
+        fig.suptitle(f"{side} : {pct_chance[side]: .2f}% to win")
 
     # df = pd.concat([pd.Series(result.atk_hist), pd.Series(-1 * np.array(result.def_wins))], axis=0)
     df['remain'] = df.apply(lambda row: -row['remain'] if row['side'] == 'def' else row['remain'], axis=1)
     df = df.sort_values('remain')
     df = pd.DataFrame(df)
-    fig, ax = plots.subplots("stacked hist")
+    fig, ax = plots.subplots(f"Attacker Wins {pct_chance['atk']:.2f}%")
     sns.histplot(data=df, weights="percent", x='remain',  hue='side', binwidth=1, ax=ax, stat='percent')
     cum = np.cumsum(df['count'])
     cum /= cum.max()
