@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core", "pybind11", "tbb"]
+requires = ["scikit-build-core"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -15,8 +15,7 @@ dependencies = [
     "mpl-qt-viz>=1.1.0",
     "pandas>=3.0.2",
     "pyqt6>=6.11.0",
-    "seaborn>=0.13.2",
-    "tbb>=2022.3.1",
+    "seaborn>=0.13.2"
 ]
 [project.urls]
 homepage = "https://github.com/nanthony21/RiskMonteCarlo"
@@ -26,4 +25,4 @@ risk-sim = 'risk_sim.__main__:cli_main'
 [tool.scikit-build]
 # List the directories containing your __init__.py files
 wheel.packages = ["src/risk_sim"]
-
+cmake.args = ["--preset", "default"]

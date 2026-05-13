@@ -3,7 +3,7 @@ project(risk_sim LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-add_subdirectory(extern/pybind11)
+find_package(pybind11 CONFIG REQUIRED)
 
 add_library(
     rslib
@@ -12,7 +12,7 @@ add_library(
     )
 
 find_package(TBB CONFIG)
-if (TBB_Found)
+if (TBB_FOUND)
     target_link_libraries(rslib TBB::tbb)
 else ()
     target_compile_definitions(rslib PRIVATE "RISK_SINGLE_THREAD")
@@ -27,4 +27,8 @@ endif()
 # The target name must match the name used in your C++ PYBIND11_MODULE macro
 pybind11_add_module(risk_solver cpp_src/module.cpp)
 target_link_libraries(risk_solver PRIVATE rslib)
-install(TARGETS risk_solver DESTINATION .)
+install(TARGETS risk_solver
+        DESTINATION .)
+
+install(IMPORTED_RUNTIME_ARTIFACTS TBB::tbb  # Runtime dependencies like TBB need to be installed
+        DESTINATION .)
